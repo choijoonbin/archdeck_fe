@@ -1,37 +1,44 @@
-import React, { useState } from 'react';
-import { useLearning } from '../context/LearningContext';
-import { 
-  GitCompare, 
-  CheckCircle2, 
-  AlertTriangle, 
-  XCircle, 
-  Compass, 
-  Layers
-} from 'lucide-react';
+import React, { useState } from "react";
+import { useLearning } from "../context/LearningContext";
+import {
+  GitCompare,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Compass,
+  Layers,
+} from "lucide-react";
 
 export const ComparisonView: React.FC = () => {
   const { comparisons } = useLearning();
-  const [activeComparisonId, setActiveComparisonId] = useState<string>(comparisons[0]?.id || 'spa-vs-bff');
+  const [activeComparisonId, setActiveComparisonId] = useState<string>(
+    decodeURIComponent(location.pathname.split("/")[2] || "") ||
+      comparisons[0]?.id ||
+      "spa-vs-bff",
+  );
 
-  const currentComparison = comparisons.find(c => c.id === activeComparisonId) || comparisons[0];
+  const currentComparison =
+    comparisons.find((c) => c.id === activeComparisonId) || comparisons[0];
 
-  const getStatusBadge = (status: 'positive' | 'warning' | 'negative' | 'neutral') => {
+  const getStatusBadge = (
+    status: "positive" | "warning" | "negative" | "neutral",
+  ) => {
     switch (status) {
-      case 'positive':
+      case "positive":
         return (
           <span className="inline-flex items-center space-x-1 text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/30">
             <CheckCircle2 className="w-3 h-3 text-emerald-400" />
             <span>Positive</span>
           </span>
         );
-      case 'warning':
+      case "warning":
         return (
           <span className="inline-flex items-center space-x-1 text-[11px] font-mono px-2 py-0.5 rounded bg-amber-950/60 text-amber-400 border border-amber-500/30">
             <AlertTriangle className="w-3 h-3 text-amber-400" />
             <span>Caution</span>
           </span>
         );
-      case 'negative':
+      case "negative":
         return (
           <span className="inline-flex items-center space-x-1 text-[11px] font-mono px-2 py-0.5 rounded bg-rose-950/60 text-rose-400 border border-rose-500/30">
             <XCircle className="w-3 h-3 text-rose-400" />
@@ -47,6 +54,8 @@ export const ComparisonView: React.FC = () => {
     }
   };
 
+  if (!currentComparison)
+    return <div className="empty-state">등록된 비교가 없습니다.</div>;
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Header & Switcher */}
@@ -71,17 +80,24 @@ export const ComparisonView: React.FC = () => {
 
           {/* Switcher Pills */}
           <div className="flex items-center space-x-2 overflow-x-auto shrink-0">
-            {comparisons.map(comp => (
+            {comparisons.map((comp) => (
               <button
                 key={comp.id}
-                onClick={() => setActiveComparisonId(comp.id)}
+                onClick={() => {
+                  setActiveComparisonId(comp.id);
+                  history.replaceState(
+                    {},
+                    "",
+                    "/comparisons/" + encodeURIComponent(comp.id),
+                  );
+                }}
                 className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                   comp.id === currentComparison.id
-                    ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-glow-purple'
-                    : 'bg-white/[0.04] text-slate-400 hover:text-white hairline-border'
+                    ? "bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-glow-purple"
+                    : "bg-white/[0.04] text-slate-400 hover:text-white hairline-border"
                 }`}
               >
-                {comp.title.split(' vs ')[0] || comp.title}
+                {comp.title.split(" vs ")[0] || comp.title}
               </button>
             ))}
           </div>
@@ -90,8 +106,8 @@ export const ComparisonView: React.FC = () => {
 
       {/* Comparison Subjects Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {currentComparison.subjects.map(subject => (
-          <div 
+        {currentComparison.subjects.map((subject) => (
+          <div
             key={subject.id}
             className="p-5 rounded-xl glass-card hairline-border flex flex-col justify-between"
           >
@@ -101,17 +117,19 @@ export const ComparisonView: React.FC = () => {
                   {subject.tag}
                 </span>
               </div>
-              <h3 className="text-base font-bold text-white">
-                {subject.name}
-              </h3>
+              <h3 className="text-base font-bold text-white">{subject.name}</h3>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
                 {subject.description}
               </p>
             </div>
 
             <div className="mt-4 pt-3 border-t border-white/[0.06] text-[11px] text-slate-400">
-              <span className="font-semibold text-slate-300 block mb-0.5">권장 환경:</span>
-              <span className="leading-tight text-slate-400">{subject.recommendedFor}</span>
+              <span className="font-semibold text-slate-300 block mb-0.5">
+                권장 환경:
+              </span>
+              <span className="leading-tight text-slate-400">
+                {subject.recommendedFor}
+              </span>
             </div>
           </div>
         ))}
@@ -130,23 +148,28 @@ export const ComparisonView: React.FC = () => {
         </div>
 
         <div className="divide-y divide-white/[0.06]">
-          {currentComparison.dimensions.map(dim => (
-            <div key={dim.key} className="p-6 hover:bg-white/[0.01] transition-colors">
+          {currentComparison.dimensions.map((dim) => (
+            <div
+              key={dim.key}
+              className="p-6 hover:bg-white/[0.01] transition-colors"
+            >
               <div className="mb-4">
                 <h4 className="text-sm font-bold text-white flex items-center space-x-2">
                   <span>{dim.name}</span>
                 </h4>
                 {dim.description && (
-                  <p className="text-xs text-slate-400 mt-0.5">{dim.description}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {dim.description}
+                  </p>
                 )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {currentComparison.subjects.map(subj => {
+                {currentComparison.subjects.map((subj) => {
                   const val = dim.values[subj.id];
                   if (!val) return null;
                   return (
-                    <div 
+                    <div
                       key={subj.id}
                       className="p-3.5 rounded-xl bg-[#090D18] hairline-border space-y-2 flex flex-col justify-between"
                     >
@@ -189,7 +212,7 @@ export const ComparisonView: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {currentComparison.decisionGuide.map((rule, idx) => (
-            <div 
+            <div
               key={idx}
               className="p-4 rounded-xl bg-[#090D18] hairline-border space-y-2.5 flex flex-col justify-between"
             >
@@ -204,7 +227,9 @@ export const ComparisonView: React.FC = () => {
               </div>
 
               <div className="pt-2 border-t border-white/[0.06] text-[11px] text-slate-400 leading-relaxed">
-                <span className="font-semibold text-slate-300">선택 이유: </span>
+                <span className="font-semibold text-slate-300">
+                  선택 이유:{" "}
+                </span>
                 {rule.reason}
               </div>
             </div>

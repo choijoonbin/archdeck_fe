@@ -1,31 +1,34 @@
-import React, { useState } from 'react';
-import { useLearning } from '../context/LearningContext';
-import { 
-  BookOpen, 
-  Search, 
-  ShieldAlert, 
-  ExternalLink, 
+import React, { useState } from "react";
+import { useLearning } from "../context/LearningContext";
+import {
+  BookOpen,
+  Search,
+  ShieldAlert,
+  ExternalLink,
   FileText,
   ChevronDown,
-  ChevronUp
-} from 'lucide-react';
+  ChevronUp,
+} from "lucide-react";
 
 export const GlossaryView: React.FC = () => {
   const { glossaryTerms, setActiveTopicId, setCurrentView } = useLearning();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
+  const [expandedId, setExpandedId] = useState<string | null>(
+    decodeURIComponent(location.pathname.split("/")[2] || "") || null,
+  );
 
   const categories = [
-    { id: 'ALL', label: '전체' },
-    { id: 'Protocol & Spec', label: '프로토콜 & 표준' },
-    { id: 'Security Attack & Defense', label: '보안 공격 & 방어' },
-    { id: 'Architecture Pattern', label: '아키텍처 패턴' },
-    { id: 'Identity & Cryptography', label: '인증 & 암호학' },
+    { id: "ALL", label: "전체" },
+    { id: "Protocol & Spec", label: "프로토콜 & 표준" },
+    { id: "Security Attack & Defense", label: "보안 공격 & 방어" },
+    { id: "Architecture Pattern", label: "아키텍처 패턴" },
+    { id: "Identity & Cryptography", label: "인증 & 암호학" },
   ];
 
-  const filteredTerms = glossaryTerms.filter(term => {
-    if (selectedCategory !== 'ALL' && term.category !== selectedCategory) return false;
+  const filteredTerms = glossaryTerms.filter((term) => {
+    if (selectedCategory !== "ALL" && term.category !== selectedCategory)
+      return false;
     if (!searchQuery.trim()) return true;
 
     const q = searchQuery.toLowerCase();
@@ -34,17 +37,18 @@ export const GlossaryView: React.FC = () => {
       term.koreanName.toLowerCase().includes(q) ||
       term.shortDef.toLowerCase().includes(q) ||
       term.fullDef.toLowerCase().includes(q) ||
-      term.tags.some(t => t.toLowerCase().includes(q))
+      term.tags.some((t) => t.toLowerCase().includes(q))
     );
   });
 
   const toggleExpand = (id: string) => {
-    setExpandedId(prev => (prev === id ? null : id));
+    setExpandedId((prev) => (prev === id ? null : id));
+    history.replaceState({}, "", "/glossary/" + encodeURIComponent(id));
   };
 
   const handleGoToTopic = (topicId: string) => {
     setActiveTopicId(topicId);
-    setCurrentView('topics');
+    setCurrentView("topics");
   };
 
   return (
@@ -65,7 +69,8 @@ export const GlossaryView: React.FC = () => {
               핵심 아키텍처 & 보안 용어 사전
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              PKCE, Token Relay, JWKS, Kill Switch 등 실무 아키텍처 수립에 필수적인 핵심 개념 총정리
+              PKCE, Token Relay, JWKS, Kill Switch 등 실무 아키텍처 수립에
+              필수적인 핵심 개념 총정리
             </p>
           </div>
 
@@ -84,14 +89,14 @@ export const GlossaryView: React.FC = () => {
 
         {/* Category Filter Pills */}
         <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center space-x-2 overflow-x-auto">
-          {categories.map(cat => (
+          {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
                 selectedCategory === cat.id
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-glow-emerald'
-                  : 'bg-white/[0.03] text-slate-400 hover:text-white hairline-border'
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-glow-emerald"
+                  : "bg-white/[0.03] text-slate-400 hover:text-white hairline-border"
               }`}
             >
               {cat.label}
@@ -105,13 +110,15 @@ export const GlossaryView: React.FC = () => {
 
       {/* Terms Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filteredTerms.map(term => {
+        {filteredTerms.map((term) => {
           const isExpanded = expandedId === term.id;
           return (
             <div
               key={term.id}
               className={`p-6 rounded-2xl glass-card hairline-border transition-all flex flex-col justify-between ${
-                isExpanded ? 'border-cyan-500/40 shadow-2xl' : 'hover:border-white/[0.15]'
+                isExpanded
+                  ? "border-cyan-500/40 shadow-2xl"
+                  : "hover:border-white/[0.15]"
               }`}
             >
               <div>
@@ -158,9 +165,14 @@ export const GlossaryView: React.FC = () => {
 
                     {term.keyPoints.length > 0 && (
                       <div className="p-3.5 rounded-xl bg-[#090D18] hairline-border space-y-1.5">
-                        <span className="text-xs font-bold text-cyan-300 block mb-1">핵심 포인트:</span>
+                        <span className="text-xs font-bold text-cyan-300 block mb-1">
+                          핵심 포인트:
+                        </span>
                         {term.keyPoints.map((pt, pIdx) => (
-                          <div key={pIdx} className="text-xs text-slate-300 flex items-start space-x-2">
+                          <div
+                            key={pIdx}
+                            className="text-xs text-slate-300 flex items-start space-x-2"
+                          >
                             <span className="text-cyan-400 font-bold">•</span>
                             <span className="leading-relaxed">{pt}</span>
                           </div>
@@ -172,7 +184,9 @@ export const GlossaryView: React.FC = () => {
                       <div className="p-3.5 rounded-xl bg-rose-950/20 border border-rose-500/30 text-xs text-rose-200 flex items-start space-x-2">
                         <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                         <div className="leading-relaxed">
-                          <span className="font-bold text-rose-300 mr-1">[실무 보안 주의점]</span>
+                          <span className="font-bold text-rose-300 mr-1">
+                            [실무 보안 주의점]
+                          </span>
                           {term.securityRelevance}
                         </div>
                       </div>
@@ -186,7 +200,10 @@ export const GlossaryView: React.FC = () => {
                 {/* Tags */}
                 <div className="flex items-center space-x-1.5 flex-wrap gap-y-1">
                   {term.tags.map((t, idx) => (
-                    <span key={idx} className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.03] text-slate-400">
+                    <span
+                      key={idx}
+                      className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.03] text-slate-400"
+                    >
                       #{t}
                     </span>
                   ))}
@@ -207,9 +224,13 @@ export const GlossaryView: React.FC = () => {
                   <button
                     onClick={() => toggleExpand(term.id)}
                     className="p-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300"
-                    title={isExpanded ? '접기' : '상세 열기'}
+                    title={isExpanded ? "접기" : "상세 열기"}
                   >
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>

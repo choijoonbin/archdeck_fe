@@ -1,259 +1,214 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Topic, GlossaryTerm, ChecklistItem, ComparisonMatrix, UserLearningState } from '../types';
-import { initialTopics, initialGlossaryTerms, initialChecklists, initialComparisons } from '../data';
-import { apiService } from '../services/apiClient';
-
-interface LearningContextType {
-  topics: Topic[];
-  glossaryTerms: GlossaryTerm[];
-  comparisons: ComparisonMatrix[];
-  checklists: ChecklistItem[];
-  bookmarks: string[];
-  completedTopics: string[];
-  notes: Record<string, string>;
-  checklistProgress: Record<string, boolean>;
-  isBackendConnected: boolean;
-  toggleBookmark: (topicId: string) => void;
-  toggleCompleted: (topicId: string) => void;
-  updateNote: (topicId: string, noteText: string) => void;
-  toggleChecklist: (checklistId: string) => void;
-  addCustomTopic: (topic: Topic) => Promise<boolean>;
-  addCustomGlossary: (term: GlossaryTerm) => Promise<boolean>;
-  exportDataJson: () => string;
-  importDataJson: (jsonStr: string) => boolean;
-  activeTopicId: string;
-  setActiveTopicId: (id: string) => void;
-  currentView: 'home' | 'topics' | 'comparisons' | 'glossary' | 'checklists' | 'learning';
-  setCurrentView: (view: 'home' | 'topics' | 'comparisons' | 'glossary' | 'checklists' | 'learning') => void;
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
+import {
+  Topic,
+  GlossaryTerm,
+  ComparisonMatrix,
+  ChecklistItem,
+  UserLearningState,
+} from "../types";
+import { apiService } from "../services/apiClient";
+import { useAuth } from "./AuthContext";
+export type View =
+  | "home"
+  | "topics"
+  | "comparisons"
+  | "glossary"
+  | "checklists"
+  | "learning"
+  | "insights"
+  | "research"
+  | "users"
+  | "studio";
+const Context = createContext<any>(null);
+const blank = (): UserLearningState => ({
+  bookmarks: [],
+  completedTopics: [],
+  notes: {},
+  checklistProgress: {},
+});
+function valid(data: any): data is UserLearningState {
+  return (
+    data &&
+    Array.isArray(data.bookmarks) &&
+    data.bookmarks.every((x: any) => typeof x === "string") &&
+    Array.isArray(data.completedTopics) &&
+    data.completedTopics.every((x: any) => typeof x === "string") &&
+    data.notes &&
+    typeof data.notes === "object" &&
+    !Array.isArray(data.notes) &&
+    Object.values(data.notes).every((x) => typeof x === "string") &&
+    data.checklistProgress &&
+    typeof data.checklistProgress === "object" &&
+    !Array.isArray(data.checklistProgress) &&
+    Object.values(data.checklistProgress).every((x) => typeof x === "boolean")
+  );
 }
-
-const STORAGE_KEY = 'archdeck_user_learning_v1';
-const CUSTOM_TOPICS_KEY = 'archdeck_custom_topics_v1';
-const CUSTOM_GLOSSARY_KEY = 'archdeck_custom_glossary_v1';
-
-const LearningContext = createContext<LearningContextType | undefined>(undefined);
-
-export const LearningProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [topics, setTopics] = useState<Topic[]>(initialTopics);
-  const [glossaryTerms, setGlossaryTerms] = useState<GlossaryTerm[]>(initialGlossaryTerms);
-  const [comparisons] = useState<ComparisonMatrix[]>(initialComparisons);
-  const [checklists] = useState<ChecklistItem[]>(initialChecklists);
-  
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
-  const [completedTopics, setCompletedTopics] = useState<string[]>([]);
-  const [notes, setNotes] = useState<Record<string, string>>({});
-  const [checklistProgress, setChecklistProgress] = useState<Record<string, boolean>>({});
-  
-  const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
-  const [activeTopicId, setActiveTopicId] = useState<string>('keycloak-iam-overview');
-  const [currentView, setCurrentView] = useState<'home' | 'topics' | 'comparisons' | 'glossary' | 'checklists' | 'learning'>('home');
-
-  // Load from local storage and remote API on mount
-  useEffect(() => {
-    // 1. Local Storage First
+export function LearningProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const key = "archdeck:learning:v2:" + location.origin + ":" + user.id;
+  const [state, setState] = useState<UserLearningState>(() => {
     try {
-      const savedLearning = localStorage.getItem(STORAGE_KEY);
-      if (savedLearning) {
-        const parsed: UserLearningState = JSON.parse(savedLearning);
-        setBookmarks(parsed.bookmarks || []);
-        setCompletedTopics(parsed.completedTopics || []);
-        setNotes(parsed.notes || {});
-        setChecklistProgress(parsed.checklistProgress || {});
-      }
-
-      const savedCustomTopics = localStorage.getItem(CUSTOM_TOPICS_KEY);
-      if (savedCustomTopics) {
-        const parsedTopics: Topic[] = JSON.parse(savedCustomTopics);
-        setTopics([...initialTopics, ...parsedTopics]);
-      }
-
-      const savedCustomGlossary = localStorage.getItem(CUSTOM_GLOSSARY_KEY);
-      if (savedCustomGlossary) {
-        const parsedGlossary: GlossaryTerm[] = JSON.parse(savedCustomGlossary);
-        setGlossaryTerms([...initialGlossaryTerms, ...parsedGlossary]);
-      }
-    } catch (e) {
-      console.warn('로컬 스토리지 파싱 에러:', e);
+      const data = JSON.parse(localStorage.getItem(key) || "null");
+      return valid(data) ? data : blank();
+    } catch {
+      return blank();
     }
-
-    // 2. Remote Backend Check
-    apiService.checkHealth().then(isOk => {
-      setIsBackendConnected(isOk);
-      if (isOk) {
-        apiService.getUserState().then(remoteState => {
-          if (remoteState) {
-            setBookmarks(remoteState.bookmarks || []);
-            setCompletedTopics(remoteState.completedTopics || []);
-            setNotes(remoteState.notes || {});
-            setChecklistProgress(remoteState.checklistProgress || {});
-          }
-        });
-
-        apiService.getTopics().then(remoteTopics => {
-          if (remoteTopics && remoteTopics.length > 0) {
-            setTopics(remoteTopics);
-          }
-        });
-
-        apiService.getGlossary().then(remoteGlossary => {
-          if (remoteGlossary && remoteGlossary.length > 0) {
-            setGlossaryTerms(remoteGlossary);
-          }
-        });
-      }
-    });
+  });
+  const [topics, setTopics] = useState<Topic[]>([]),
+    [glossaryTerms, setGlossary] = useState<GlossaryTerm[]>([]),
+    [comparisons, setComparisons] = useState<ComparisonMatrix[]>([]),
+    [checklists, setChecklists] = useState<ChecklistItem[]>([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState(""),
+    [storageError, setStorageError] = useState("");
+  const parts = () => location.pathname.split("/").filter(Boolean);
+  const [currentView, updateView] = useState<View>(
+    (parts()[0] as View) || "home",
+  );
+  const [activeTopicId, updateTopic] = useState(
+    decodeURIComponent(parts()[1] || ""),
+  );
+  const refresh = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const [a, b, c, d] = await Promise.all([
+        apiService.getTopics(),
+        apiService.getGlossary(),
+        apiService.getComparisons(),
+        apiService.getChecklists(),
+      ]);
+      setTopics(a);
+      setGlossary(b);
+      setComparisons(c);
+      setChecklists(d);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
+    refresh();
+    const pop = () => {
+      updateView((parts()[0] as View) || "home");
+      updateTopic(decodeURIComponent(parts()[1] || ""));
+    };
+    window.addEventListener("popstate", pop);
+    return () => window.removeEventListener("popstate", pop);
   }, []);
-
-  // Save to local storage whenever state changes
   useEffect(() => {
-    const state: UserLearningState = {
-      bookmarks,
-      completedTopics,
-      notes,
-      checklistProgress
-    };
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.warn('로컬 스토리지 저장 실패:', e);
+      localStorage.setItem(key, JSON.stringify(state));
+    } catch {
+      setStorageError(
+        "이 브라우저에 기록을 저장할 수 없습니다. JSON 백업을 사용해 주세요.",
+      );
     }
-
-    if (isBackendConnected) {
-      apiService.syncUserState(state);
-    }
-  }, [bookmarks, completedTopics, notes, checklistProgress, isBackendConnected]);
-
-  const toggleBookmark = (topicId: string) => {
-    setBookmarks(prev => 
-      prev.includes(topicId) ? prev.filter(id => id !== topicId) : [...prev, topicId]
-    );
+  }, [state, key]);
+  const activeRef = useRef(activeTopicId);
+  const setCurrentView = (view: View) => {
+    updateView(view);
+    const suffix =
+      view === "topics" && activeRef.current
+        ? "/" + encodeURIComponent(activeRef.current)
+        : "";
+    history.pushState({}, "", view === "home" ? "/" : "/" + view + suffix);
   };
-
-  const toggleCompleted = (topicId: string) => {
-    setCompletedTopics(prev => 
-      prev.includes(topicId) ? prev.filter(id => id !== topicId) : [...prev, topicId]
-    );
+  const setActiveTopicId = (id: string) => {
+    activeRef.current = id;
+    updateTopic(id);
+    history.replaceState({}, "", "/topics/" + encodeURIComponent(id));
   };
-
-  const updateNote = (topicId: string, noteText: string) => {
-    setNotes(prev => ({
-      ...prev,
-      [topicId]: noteText
+  const toggle = (field: "bookmarks" | "completedTopics", id: string) =>
+    setState((p) => ({
+      ...p,
+      [field]: p[field].includes(id)
+        ? p[field].filter((v) => v !== id)
+        : [...p[field], id],
     }));
-  };
-
-  const toggleChecklist = (checklistId: string) => {
-    setChecklistProgress(prev => ({
-      ...prev,
-      [checklistId]: !prev[checklistId]
-    }));
-  };
-
-  const addCustomTopic = async (newTopic: Topic): Promise<boolean> => {
-    setTopics(prev => [newTopic, ...prev]);
+  const addCustomTopic = async (item: Topic) => {
     try {
-      const customOnly = topics.filter(t => !initialTopics.some(it => it.id === t.id));
-      localStorage.setItem(CUSTOM_TOPICS_KEY, JSON.stringify([...customOnly, newTopic]));
-    } catch (e) {
-      console.warn(e);
-    }
-
-    if (isBackendConnected) {
-      await apiService.saveCustomTopic(newTopic);
-    }
-    return true;
-  };
-
-  const addCustomGlossary = async (newTerm: GlossaryTerm): Promise<boolean> => {
-    setGlossaryTerms(prev => [newTerm, ...prev]);
-    try {
-      const customOnly = glossaryTerms.filter(g => !initialGlossaryTerms.some(ig => ig.id === g.id));
-      localStorage.setItem(CUSTOM_GLOSSARY_KEY, JSON.stringify([...customOnly, newTerm]));
-    } catch (e) {
-      console.warn(e);
-    }
-
-    if (isBackendConnected) {
-      await apiService.saveCustomGlossary(newTerm);
-    }
-    return true;
-  };
-
-  const exportDataJson = (): string => {
-    const exportObject = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      userLearning: {
-        bookmarks,
-        completedTopics,
-        notes,
-        checklistProgress
-      },
-      customTopics: topics.filter(t => !initialTopics.some(it => it.id === t.id)),
-      customGlossary: glossaryTerms.filter(g => !initialGlossaryTerms.some(ig => ig.id === g.id))
-    };
-    return JSON.stringify(exportObject, null, 2);
-  };
-
-  const importDataJson = (jsonStr: string): boolean => {
-    try {
-      const data = JSON.parse(jsonStr);
-      if (data.userLearning) {
-        setBookmarks(data.userLearning.bookmarks || []);
-        setCompletedTopics(data.userLearning.completedTopics || []);
-        setNotes(data.userLearning.notes || {});
-        setChecklistProgress(data.userLearning.checklistProgress || {});
-      }
-      if (Array.isArray(data.customTopics)) {
-        setTopics([...initialTopics, ...data.customTopics]);
-        localStorage.setItem(CUSTOM_TOPICS_KEY, JSON.stringify(data.customTopics));
-      }
-      if (Array.isArray(data.customGlossary)) {
-        setGlossaryTerms([...initialGlossaryTerms, ...data.customGlossary]);
-        localStorage.setItem(CUSTOM_GLOSSARY_KEY, JSON.stringify(data.customGlossary));
-      }
+      await apiService.saveCustomTopic(item);
+      await refresh();
       return true;
     } catch (e) {
-      console.error('Import failed:', e);
+      setError((e as Error).message);
       return false;
     }
   };
-
+  const addCustomGlossary = async (item: GlossaryTerm) => {
+    try {
+      await apiService.saveCustomGlossary(item);
+      await refresh();
+      return true;
+    } catch (e) {
+      setError((e as Error).message);
+      return false;
+    }
+  };
+  const importDataJson = (text: string) => {
+    try {
+      const data = JSON.parse(text);
+      if (!valid(data.userLearning)) return false;
+      setState(data.userLearning);
+      return true;
+    } catch {
+      return false;
+    }
+  };
   return (
-    <LearningContext.Provider
+    <Context.Provider
       value={{
         topics,
         glossaryTerms,
         comparisons,
         checklists,
-        bookmarks,
-        completedTopics,
-        notes,
-        checklistProgress,
-        isBackendConnected,
-        toggleBookmark,
-        toggleCompleted,
-        updateNote,
-        toggleChecklist,
+        ...state,
+        loading,
+        error,
+        storageError,
+        refresh,
+        isBackendConnected: !error,
+        toggleBookmark: (id: string) => toggle("bookmarks", id),
+        toggleCompleted: (id: string) => toggle("completedTopics", id),
+        updateNote: (id: string, text: string) =>
+          setState((p) => ({ ...p, notes: { ...p.notes, [id]: text } })),
+        toggleChecklist: (id: string) =>
+          setState((p) => ({
+            ...p,
+            checklistProgress: {
+              ...p.checklistProgress,
+              [id]: !p.checklistProgress[id],
+            },
+          })),
         addCustomTopic,
         addCustomGlossary,
-        exportDataJson,
+        exportDataJson: () =>
+          JSON.stringify(
+            {
+              version: 2,
+              exportedAt: new Date().toISOString(),
+              userLearning: state,
+            },
+            null,
+            2,
+          ),
         importDataJson,
+        currentView,
+        setCurrentView,
         activeTopicId,
         setActiveTopicId,
-        currentView,
-        setCurrentView
       }}
     >
       {children}
-    </LearningContext.Provider>
+    </Context.Provider>
   );
-};
-
-export const useLearning = () => {
-  const context = useContext(LearningContext);
-  if (!context) {
-    throw new Error('useLearning must be used within a LearningProvider');
-  }
-  return context;
-};
+}
+export const useLearning = () => useContext(Context);

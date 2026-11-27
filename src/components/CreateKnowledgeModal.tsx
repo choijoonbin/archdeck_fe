@@ -102,7 +102,7 @@ export const config = {
       relatedTopicIds: ['spa-pkce-direct']
     };
 
-    await addCustomTopic(newTopic);
+    if (!await addCustomTopic(newTopic)) return;
     setIsSuccess(true);
     setTimeout(() => {
       setIsSuccess(false);
@@ -130,7 +130,7 @@ export const config = {
       tags: glossaryTags.split(',').map(t => t.trim()).filter(Boolean)
     };
 
-    await addCustomGlossary(newTerm);
+    if (!await addCustomGlossary(newTerm)) return;
     setIsSuccess(true);
     setTimeout(() => {
       setIsSuccess(false);

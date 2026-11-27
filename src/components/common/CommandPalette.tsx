@@ -1,32 +1,53 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLearning } from '../../context/LearningContext';
-import { Search, Layers, GitCompare, BookOpen, CheckSquare, ArrowRight, CornerDownLeft, X } from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import { useLearning } from "../../context/LearningContext";
+import {
+  Search,
+  Layers,
+  GitCompare,
+  BookOpen,
+  CheckSquare,
+  ArrowRight,
+  CornerDownLeft,
+  X,
+} from "lucide-react";
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
-  const { topics, glossaryTerms, comparisons, checklists, setActiveTopicId, setCurrentView } = useLearning();
-  const [query, setQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'topics' | 'comparisons' | 'glossary' | 'checklists'>('all');
+export const CommandPalette: React.FC<CommandPaletteProps> = ({
+  isOpen,
+  onClose,
+}) => {
+  const {
+    topics,
+    glossaryTerms,
+    comparisons,
+    checklists,
+    setActiveTopicId,
+    setCurrentView,
+  } = useLearning();
+  const [query, setQuery] = useState("");
+  const [filterType, setFilterType] = useState<
+    "all" | "topics" | "comparisons" | "glossary" | "checklists"
+  >("all");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto focus on open
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
+      setQuery("");
       setSelectedIndex(0);
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [isOpen]);
 
   // Aggregate searchable items
-  const topicItems = topics.map(t => ({
+  const topicItems = topics.map((t) => ({
     id: t.id,
-    type: 'topic' as const,
+    type: "topic" as const,
     title: t.title,
     subtitle: t.koreanTitle,
     category: t.category,
@@ -34,61 +55,74 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     badges: t.badges,
     action: () => {
       setActiveTopicId(t.id);
-      setCurrentView('topics');
+      setCurrentView("topics");
       onClose();
-    }
+    },
   }));
 
-  const comparisonItems = comparisons.map(c => ({
+  const comparisonItems = comparisons.map((c) => ({
     id: c.id,
-    type: 'comparison' as const,
+    type: "comparison" as const,
     title: c.title,
     subtitle: c.subtitle,
     category: c.category,
-    description: c.subjects.map(s => s.name).join(' vs '),
-    badges: ['Comparison', 'Matrix'],
+    description: c.subjects.map((s) => s.name).join(" vs "),
+    badges: ["Comparison", "Matrix"],
     action: () => {
-      setCurrentView('comparisons');
+      setCurrentView("comparisons");
+      history.replaceState({}, "", "/comparisons/" + encodeURIComponent(c.id));
       onClose();
-    }
+    },
   }));
 
-  const glossaryItems = glossaryTerms.map(g => ({
+  const glossaryItems = glossaryTerms.map((g) => ({
     id: g.id,
-    type: 'glossary' as const,
+    type: "glossary" as const,
     title: g.term,
     subtitle: g.koreanName,
     category: g.category,
     description: g.shortDef,
     badges: g.tags,
     action: () => {
-      setCurrentView('glossary');
+      setCurrentView("glossary");
+      history.replaceState({}, "", "/glossary/" + encodeURIComponent(g.id));
       onClose();
-    }
+    },
   }));
 
-  const checklistItems = checklists.map(chk => ({
+  const checklistItems = checklists.map((chk) => ({
     id: chk.id,
-    type: 'checklist' as const,
+    type: "checklist" as const,
     title: chk.title,
     subtitle: chk.category,
     category: chk.category,
     description: chk.description,
     badges: [chk.priority],
     action: () => {
-      setCurrentView('checklists');
+      setCurrentView("checklists");
+      history.replaceState(
+        {},
+        "",
+        "/checklists?item=" + encodeURIComponent(chk.id),
+      );
       onClose();
-    }
+    },
   }));
 
   // Filter items
-  const allItems = [...topicItems, ...comparisonItems, ...glossaryItems, ...checklistItems];
+  const allItems = [
+    ...topicItems,
+    ...comparisonItems,
+    ...glossaryItems,
+    ...checklistItems,
+  ];
 
-  const filteredItems = allItems.filter(item => {
-    if (filterType === 'topics' && item.type !== 'topic') return false;
-    if (filterType === 'comparisons' && item.type !== 'comparison') return false;
-    if (filterType === 'glossary' && item.type !== 'glossary') return false;
-    if (filterType === 'checklists' && item.type !== 'checklist') return false;
+  const filteredItems = allItems.filter((item) => {
+    if (filterType === "topics" && item.type !== "topic") return false;
+    if (filterType === "comparisons" && item.type !== "comparison")
+      return false;
+    if (filterType === "glossary" && item.type !== "glossary") return false;
+    if (filterType === "checklists" && item.type !== "checklist") return false;
 
     if (!query.trim()) return true;
 
@@ -97,7 +131,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       item.title.toLowerCase().includes(q) ||
       item.subtitle.toLowerCase().includes(q) ||
       item.description.toLowerCase().includes(q) ||
-      item.badges.some(b => b.toLowerCase().includes(q))
+      item.badges.some((b) => b.toLowerCase().includes(q))
     );
   });
 
@@ -106,25 +140,29 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
 
-      if (e.key === 'ArrowDown') {
+      if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex(prev => (prev < filteredItems.length - 1 ? prev + 1 : 0));
-      } else if (e.key === 'ArrowUp') {
+        setSelectedIndex((prev) =>
+          prev < filteredItems.length - 1 ? prev + 1 : 0,
+        );
+      } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex(prev => (prev > 0 ? prev - 1 : filteredItems.length - 1));
-      } else if (e.key === 'Enter') {
+        setSelectedIndex((prev) =>
+          prev > 0 ? prev - 1 : filteredItems.length - 1,
+        );
+      } else if (e.key === "Enter") {
         e.preventDefault();
         if (filteredItems[selectedIndex]) {
           filteredItems[selectedIndex].action();
         }
-      } else if (e.key === 'Escape') {
+      } else if (e.key === "Escape") {
         e.preventDefault();
         onClose();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, filteredItems, selectedIndex, onClose]);
 
   if (!isOpen) return null;
@@ -151,7 +189,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
           />
           {query && (
             <button
-              onClick={() => setQuery('')}
+              onClick={() => setQuery("")}
               className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/[0.08]"
             >
               <X className="w-4 h-4" />
@@ -165,12 +203,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         {/* Category Filter Pills */}
         <div className="flex items-center space-x-1 px-4 py-2 bg-[#090D17] border-b border-white/[0.06] text-xs overflow-x-auto">
           {[
-            { id: 'all', label: '전체 결과' },
-            { id: 'topics', label: '아키텍처 가이드' },
-            { id: 'comparisons', label: '비교 매트릭스' },
-            { id: 'glossary', label: '용어 사전' },
-            { id: 'checklists', label: '보안 체크리스트' },
-          ].map(tab => (
+            { id: "all", label: "전체 결과" },
+            { id: "topics", label: "아키텍처 가이드" },
+            { id: "comparisons", label: "비교 매트릭스" },
+            { id: "glossary", label: "용어 사전" },
+            { id: "checklists", label: "보안 체크리스트" },
+          ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => {
@@ -179,8 +217,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
               }}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
                 filterType === tab.id
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]"
               }`}
             >
               {tab.label}
@@ -197,7 +235,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
             <div className="py-12 text-center text-slate-500 text-sm">
               <Search className="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-60" />
               <p>검색 결과가 없습니다.</p>
-              <p className="text-xs text-slate-600 mt-1">다른 키워드나 태그로 검색해 보세요.</p>
+              <p className="text-xs text-slate-600 mt-1">
+                다른 키워드나 태그로 검색해 보세요.
+              </p>
             </div>
           ) : (
             filteredItems.map((item, idx) => {
@@ -209,26 +249,39 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`flex items-start justify-between p-3 rounded-xl cursor-pointer transition-all ${
                     isSelected
-                      ? 'bg-gradient-to-r from-cyan-950/50 to-slate-800/40 border border-cyan-500/30 text-white'
-                      : 'hover:bg-white/[0.02] text-slate-300'
+                      ? "bg-gradient-to-r from-cyan-950/50 to-slate-800/40 border border-cyan-500/30 text-white"
+                      : "hover:bg-white/[0.02] text-slate-300"
                   }`}
                 >
                   <div className="flex items-start space-x-3 min-w-0 pr-3">
-                    <div className={`p-2 rounded-lg mt-0.5 shrink-0 ${
-                      item.type === 'topic' ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' :
-                      item.type === 'comparison' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
-                      item.type === 'glossary' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                      'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                    }`}>
-                      {item.type === 'topic' && <Layers className="w-4 h-4" />}
-                      {item.type === 'comparison' && <GitCompare className="w-4 h-4" />}
-                      {item.type === 'glossary' && <BookOpen className="w-4 h-4" />}
-                      {item.type === 'checklist' && <CheckSquare className="w-4 h-4" />}
+                    <div
+                      className={`p-2 rounded-lg mt-0.5 shrink-0 ${
+                        item.type === "topic"
+                          ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                          : item.type === "comparison"
+                            ? "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                            : item.type === "glossary"
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                      }`}
+                    >
+                      {item.type === "topic" && <Layers className="w-4 h-4" />}
+                      {item.type === "comparison" && (
+                        <GitCompare className="w-4 h-4" />
+                      )}
+                      {item.type === "glossary" && (
+                        <BookOpen className="w-4 h-4" />
+                      )}
+                      {item.type === "checklist" && (
+                        <CheckSquare className="w-4 h-4" />
+                      )}
                     </div>
 
                     <div className="min-w-0">
                       <div className="flex items-center space-x-2">
-                        <span className="font-semibold text-sm truncate">{item.title}</span>
+                        <span className="font-semibold text-sm truncate">
+                          {item.title}
+                        </span>
                         {item.subtitle && (
                           <span className="text-xs text-slate-400 truncate hidden sm:inline">
                             — {item.subtitle}
@@ -243,7 +296,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
                           {item.category}
                         </span>
                         {item.badges.slice(0, 2).map((b, bIdx) => (
-                          <span key={bIdx} className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-950/40 text-cyan-300/80 border border-cyan-500/20">
+                          <span
+                            key={bIdx}
+                            className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-cyan-950/40 text-cyan-300/80 border border-cyan-500/20"
+                          >
                             {b}
                           </span>
                         ))}
@@ -270,9 +326,15 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         {/* Footer shortcuts */}
         <div className="px-4 py-2.5 bg-[#090D17] border-t border-white/[0.06] flex items-center justify-between text-[11px] text-slate-500 font-mono">
           <div className="flex items-center space-x-3">
-            <span><kbd className="text-slate-400">↑↓</kbd> 이동</span>
-            <span><kbd className="text-slate-400">Enter</kbd> 열기</span>
-            <span><kbd className="text-slate-400">ESC</kbd> 닫기</span>
+            <span>
+              <kbd className="text-slate-400">↑↓</kbd> 이동
+            </span>
+            <span>
+              <kbd className="text-slate-400">Enter</kbd> 열기
+            </span>
+            <span>
+              <kbd className="text-slate-400">ESC</kbd> 닫기
+            </span>
           </div>
           <span className="text-cyan-400/80">ArchDeck Quick Nav</span>
         </div>

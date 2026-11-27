@@ -1,38 +1,54 @@
-import React, { useState } from 'react';
-import { useLearning } from '../../context/LearningContext';
-import { BookOpen, ExternalLink, ShieldAlert } from 'lucide-react';
+import React, { useState } from "react";
+import { useLearning } from "../../context/LearningContext";
+import { BookOpen, ExternalLink, ShieldAlert } from "lucide-react";
 
 interface GlossaryTooltipProps {
   termId: string;
   children?: React.ReactNode;
 }
 
-export const GlossaryTooltip: React.FC<GlossaryTooltipProps> = ({ termId, children }) => {
+export const GlossaryTooltip: React.FC<GlossaryTooltipProps> = ({
+  termId,
+  children,
+}) => {
   const { glossaryTerms, setCurrentView } = useLearning();
   const [isOpen, setIsOpen] = useState(false);
 
-  const termData = glossaryTerms.find(g => g.id.toLowerCase() === termId.toLowerCase() || g.term.toLowerCase() === termId.toLowerCase());
+  const termData = glossaryTerms.find(
+    (g) =>
+      g.id.toLowerCase() === termId.toLowerCase() ||
+      g.term.toLowerCase() === termId.toLowerCase(),
+  );
 
   if (!termData) {
-    return <span className="font-mono text-cyan-300 underline decoration-cyan-500/40">{children || termId}</span>;
+    return (
+      <span className="font-mono text-cyan-300 underline decoration-cyan-500/40">
+        {children || termId}
+      </span>
+    );
   }
 
   return (
-    <span 
+    <span
       className="relative inline-block"
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
     >
       <button
         type="button"
-        onClick={() => setIsOpen(prev => !prev)}
+        onClick={() => setIsOpen((prev) => !prev)}
+        onFocus={() => setIsOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setIsOpen(false);
+        }}
+        aria-expanded={isOpen}
         className="font-mono text-cyan-300 hover:text-cyan-200 underline decoration-cyan-500/50 decoration-1 underline-offset-4 font-medium transition-colors cursor-help inline-flex items-center space-x-0.5"
       >
         <span>{children || termData.term}</span>
       </button>
 
       {isOpen && (
-        <div 
+        <div
           className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-80 p-3.5 rounded-xl glass-panel shadow-2xl border border-cyan-500/30 text-left animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md"
           role="tooltip"
         >
@@ -42,7 +58,9 @@ export const GlossaryTooltip: React.FC<GlossaryTooltipProps> = ({ termId, childr
           <div className="flex items-center justify-between pb-1.5 border-b border-white/[0.08] mb-2">
             <div className="flex items-center space-x-1.5">
               <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="font-mono font-bold text-xs text-white">{termData.term}</span>
+              <span className="font-mono font-bold text-xs text-white">
+                {termData.term}
+              </span>
             </div>
             {termData.specRef && (
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-500/20">
@@ -67,7 +85,12 @@ export const GlossaryTooltip: React.FC<GlossaryTooltipProps> = ({ termId, childr
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setCurrentView('glossary');
+                setCurrentView("glossary");
+                history.replaceState(
+                  {},
+                  "",
+                  "/glossary/" + encodeURIComponent(termData.id),
+                );
               }}
               className="text-cyan-400 hover:text-cyan-300 flex items-center space-x-0.5 underline font-medium"
             >

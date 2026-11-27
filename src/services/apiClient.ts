@@ -1,126 +1,63 @@
-import { Topic, ComparisonMatrix, GlossaryTerm, ChecklistItem, UserLearningState } from '../types';
-import { initialTopics, initialComparisons, initialGlossaryTerms, initialChecklists } from '../data';
-
-const API_BASE = '/api';
-
-class ApiService {
-  async checkHealth(): Promise<boolean> {
-    try {
-      const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(2000) });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  async getTopics(): Promise<Topic[]> {
-    try {
-      const res = await fetch(`${API_BASE}/topics`, { signal: AbortSignal.timeout(2500) });
-      if (res.ok) {
-        const data = await res.json();
-        return data.length ? data : initialTopics;
-      }
-    } catch {
-      // Fallback
-    }
-    return initialTopics;
-  }
-
-  async getTopicById(id: string): Promise<Topic | null> {
-    const topics = await this.getTopics();
-    return topics.find(t => t.id === id || t.slug === id) || null;
-  }
-
-  async getComparisons(): Promise<ComparisonMatrix[]> {
-    try {
-      const res = await fetch(`${API_BASE}/comparisons`, { signal: AbortSignal.timeout(2500) });
-      if (res.ok) {
-        const data = await res.json();
-        return data.length ? data : initialComparisons;
-      }
-    } catch {
-      // Fallback
-    }
-    return initialComparisons;
-  }
-
-  async getGlossary(): Promise<GlossaryTerm[]> {
-    try {
-      const res = await fetch(`${API_BASE}/glossary`, { signal: AbortSignal.timeout(2500) });
-      if (res.ok) {
-        const data = await res.json();
-        return data.length ? data : initialGlossaryTerms;
-      }
-    } catch {
-      // Fallback
-    }
-    return initialGlossaryTerms;
-  }
-
-  async getChecklists(): Promise<ChecklistItem[]> {
-    try {
-      const res = await fetch(`${API_BASE}/checklists`, { signal: AbortSignal.timeout(2500) });
-      if (res.ok) {
-        const data = await res.json();
-        return data.length ? data : initialChecklists;
-      }
-    } catch {
-      // Fallback
-    }
-    return initialChecklists;
-  }
-
-  async getUserState(): Promise<UserLearningState | null> {
-    try {
-      const res = await fetch(`${API_BASE}/user/learning`, { signal: AbortSignal.timeout(2500) });
-      if (res.ok) return await res.json();
-    } catch {
-      // Fallback to localStorage handled in context
-    }
-    return null;
-  }
-
-  async syncUserState(state: UserLearningState): Promise<boolean> {
-    try {
-      const res = await fetch(`${API_BASE}/user/learning`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(state),
-        signal: AbortSignal.timeout(2500)
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  async saveCustomTopic(topic: Topic): Promise<boolean> {
-    try {
-      const res = await fetch(`${API_BASE}/topics`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(topic),
-        signal: AbortSignal.timeout(2500)
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  async saveCustomGlossary(term: GlossaryTerm): Promise<boolean> {
-    try {
-      const res = await fetch(`${API_BASE}/glossary`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(term),
-        signal: AbortSignal.timeout(2500)
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
+import { Topic, ComparisonMatrix, GlossaryTerm, ChecklistItem } from "../types";
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
   }
 }
-
-export const apiService = new ApiService();
+let csrf: { token: string; headerName: string } | null = null;
+export async function request<T = any>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const method = options.method || "GET";
+  const headers = new Headers(options.headers);
+  if (!["GET", "HEAD"].includes(method)) {
+    if (!csrf) csrf = await request("/auth/csrf");
+    headers.set(csrf.headerName || "X-CSRF-TOKEN", csrf.token);
+    if (options.body && !(options.body instanceof URLSearchParams))
+      headers.set("Content-Type", "application/json");
+  }
+  const res = await fetch("/api" + path, {
+    ...options,
+    headers,
+    credentials: "same-origin",
+    cache: "no-store",
+    signal: options.signal || AbortSignal.timeout(30000),
+  });
+  if (!res.ok) {
+    if (res.status === 401 && !path.startsWith("/auth/"))
+      window.dispatchEvent(new Event("archdeck-session-expired"));
+    let message =
+      res.status === 401
+        ? "아이디 또는 비밀번호를 확인해 주세요."
+        : res.status === 403
+          ? "이 작업을 수행할 권한이 없습니다."
+          : res.status === 409
+            ? "다른 변경이 있습니다. 새로고침 후 다시 확인해 주세요."
+            : "요청을 완료하지 못했습니다. 다시 시도해 주세요.";
+    throw new ApiError(res.status, message);
+  }
+  if (res.status === 204) return undefined as T;
+  const text = await res.text();
+  return text ? JSON.parse(text) : undefined;
+}
+export function resetCsrf() {
+  csrf = null;
+}
+export const apiService = {
+  getTopics: () => request<Topic[]>("/topics"),
+  getComparisons: () => request<ComparisonMatrix[]>("/comparisons"),
+  getGlossary: () => request<GlossaryTerm[]>("/glossary"),
+  getChecklists: () => request<ChecklistItem[]>("/checklists"),
+  saveCustomTopic: async (topic: Topic) => {
+    await request("/topics", { method: "POST", body: JSON.stringify(topic) });
+    return true;
+  },
+  saveCustomGlossary: async (term: GlossaryTerm) => {
+    await request("/glossary", { method: "POST", body: JSON.stringify(term) });
+    return true;
+  },
+};

@@ -42,7 +42,7 @@ export const ArchitectureFlowViewer: React.FC = () => {
     toggleChecklist 
   } = useLearning();
 
-  const currentTopic = topics.find(t => t.id === activeTopicId) || topics[0];
+  const currentTopic = topics.find(t => t.id === activeTopicId || t.slug === activeTopicId) || topics[0];
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -54,8 +54,8 @@ export const ArchitectureFlowViewer: React.FC = () => {
   useEffect(() => {
     setCurrentStepIndex(0);
     setIsPlaying(false);
-    setLocalNoteText(notes[currentTopic.id] || '');
-  }, [currentTopic.id, notes]);
+    setLocalNoteText(notes[currentTopic?.id] || '');
+  }, [currentTopic?.id]);
 
   // Auto-play interval
   useEffect(() => {
@@ -63,7 +63,7 @@ export const ArchitectureFlowViewer: React.FC = () => {
     if (isPlaying) {
       interval = setInterval(() => {
         setCurrentStepIndex(prev => {
-          if (prev < currentTopic.flowSteps.length - 1) {
+          if (prev < (currentTopic?.flowSteps?.length || 0) - 1) {
             return prev + 1;
           } else {
             setIsPlaying(false);
@@ -75,11 +75,11 @@ export const ArchitectureFlowViewer: React.FC = () => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isPlaying, currentTopic.flowSteps.length]);
+  }, [isPlaying, (currentTopic?.flowSteps?.length || 0)]);
 
-  const activeStep = currentTopic.flowSteps[currentStepIndex] || currentTopic.flowSteps[0];
-  const isBookmarked = bookmarks.includes(currentTopic.id);
-  const isCompleted = completedTopics.includes(currentTopic.id);
+  const activeStep = currentTopic?.flowSteps?.[currentStepIndex] || currentTopic?.flowSteps?.[0] || {step:0,title:'개념 문서',actor:'',target:'',protocol:'',action:'',description:'이 문서는 단계 흐름 없이 개념과 적용 조건을 설명합니다.',activeNodes:[]};
+  const isBookmarked = bookmarks.includes(currentTopic?.id);
+  const isCompleted = completedTopics.includes(currentTopic?.id);
 
   const handleSaveNote = () => {
     updateNote(currentTopic.id, localNoteText);
@@ -100,6 +100,7 @@ export const ArchitectureFlowViewer: React.FC = () => {
     }
   };
 
+  if (!currentTopic) return <div className="empty-state">등록된 아키텍처가 없습니다.</div>;
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Topic Switcher Strip */}
@@ -190,7 +191,7 @@ export const ArchitectureFlowViewer: React.FC = () => {
           <div className="flex items-center space-x-2">
             <span className="text-xs font-mono font-bold text-cyan-400 flex items-center space-x-1">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>STEP {activeStep.step} of {currentTopic.flowSteps.length}</span>
+              <span>STEP {activeStep.step} of {(currentTopic?.flowSteps?.length || 0)}</span>
             </span>
             <span className="text-slate-600">|</span>
             <span className="text-xs font-semibold text-white truncate max-w-[200px] sm:max-w-md">
@@ -244,10 +245,10 @@ export const ArchitectureFlowViewer: React.FC = () => {
 
               <button
                 onClick={() => {
-                  setCurrentStepIndex(prev => Math.min(currentTopic.flowSteps.length - 1, prev + 1));
+                  setCurrentStepIndex(prev => Math.min((currentTopic?.flowSteps?.length || 0) - 1, prev + 1));
                   setIsPlaying(false);
                 }}
-                disabled={currentStepIndex === currentTopic.flowSteps.length - 1}
+                disabled={currentStepIndex === (currentTopic?.flowSteps?.length || 0) - 1}
                 className="p-1 rounded text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                 title="다음 단계"
               >
