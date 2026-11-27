@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "format:check": "prettier --check src/App.tsx src/context/*.tsx src/services/apiClient.ts src/components/AdminViews.tsx src/components/SettingsPanel.tsx src/index.css"
+    "format:check": "prettier --check src/App.tsx src/context/*.tsx src/services/apiClient.ts src/components/AdminViews.tsx src/components/SettingsPanel.tsx src/index.css src/components/ArchitectureDiagram.tsx src/components/ArchitectureFlowViewer.tsx src/components/CandidateReview.tsx src/types/index.ts tests/remaining-workflows.spec.ts tests/real-backend.spec.ts"
   },
   "dependencies": {
     "clsx": "^2.1.1",

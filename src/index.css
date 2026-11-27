@@ -1037,3 +1037,291 @@ h3 {
   min-height: 32px;
   align-items: center;
 }
+.architecture-diagram {
+  background: var(--surface);
+  color: var(--text);
+  min-width: 0;
+  padding: 16px;
+}
+.diagram-toolbar,
+.diagram-toolbar > div,
+.diagram-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.diagram-toolbar {
+  justify-content: space-between;
+}
+.diagram-toolbar button {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 10px;
+  background: var(--surface-alt);
+}
+.diagram-toolbar button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+.diagram-toolbar output {
+  min-width: 3.5em;
+  text-align: center;
+  font:
+    12px "JetBrains Mono",
+    monospace;
+}
+.diagram-help,
+.diagram-selection {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 10px 0;
+}
+.diagram-canvas {
+  display: block;
+  width: 100%;
+  height: 360px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-alt);
+  touch-action: none;
+  cursor: grab;
+}
+.diagram-canvas:active {
+  cursor: grabbing;
+}
+.diagram-zone rect {
+  fill: var(--accent-soft);
+  fill-opacity: 0.4;
+  stroke: var(--muted);
+  stroke-dasharray: 7 5;
+}
+.diagram-zone text {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.diagram-edge path {
+  fill: none;
+  stroke-width: 2;
+}
+.diagram-edge.is-active path {
+  stroke-width: 3.5;
+}
+.diagram-edge.is-muted {
+  opacity: 0.35;
+}
+.diagram-edge text {
+  fill: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--surface-alt);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+.diagram-edge.request path {
+  stroke: var(--accent);
+}
+.diagram-arrow.request {
+  fill: var(--accent);
+}
+.diagram-edge.response path {
+  stroke: #8b5cf6;
+  stroke-dasharray: 8 4;
+}
+.diagram-arrow.response {
+  fill: #8b5cf6;
+}
+.diagram-edge.internal path {
+  stroke: var(--muted);
+  stroke-dasharray: 3 4;
+}
+.diagram-arrow.internal {
+  fill: var(--muted);
+}
+.diagram-edge.event path {
+  stroke: #b77906;
+  stroke-dasharray: 12 4 2 4;
+}
+.diagram-arrow.event {
+  fill: #b77906;
+}
+.diagram-node {
+  cursor: pointer;
+  outline: none;
+}
+.diagram-node rect {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+.diagram-node.is-active rect {
+  stroke: var(--accent);
+  stroke-width: 3;
+}
+.diagram-node.is-selected rect,
+.diagram-node:focus-visible rect {
+  stroke: var(--text);
+  stroke-width: 4;
+  stroke-dasharray: 5 3;
+}
+.diagram-node text {
+  fill: var(--muted);
+  font-size: 10px;
+  pointer-events: none;
+}
+.diagram-node .diagram-node-type {
+  fill: var(--accent);
+  font-size: 9px;
+  font-family: "JetBrains Mono", monospace;
+}
+.diagram-node .diagram-node-label {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.diagram-legend {
+  font-size: 11px;
+  margin-top: 12px;
+  gap: 10px;
+  color: var(--muted);
+}
+.diagram-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.diagram-legend i {
+  width: 20px;
+  border-top: 2px solid var(--accent);
+}
+.diagram-legend .response {
+  border-color: #8b5cf6;
+  border-top-style: dashed;
+}
+.diagram-legend .internal {
+  border-color: var(--muted);
+  border-top-style: dotted;
+}
+.diagram-legend .event {
+  border-color: #b77906;
+  border-top-style: dashed;
+}
+.diagram-text {
+  font-size: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.diagram-text li {
+  padding: 6px;
+  overflow-wrap: anywhere;
+}
+.revision-review {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.revision-review textarea {
+  min-height: 160px;
+  width: 100%;
+  font-family: "JetBrains Mono", monospace;
+}
+.revision-diff {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--border);
+  margin: 10px 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.revision-diff > h4 {
+  grid-column: 1/-1;
+  margin: 0;
+  padding: 10px;
+  background: var(--surface-alt);
+}
+.revision-diff > div {
+  padding: 12px;
+  min-width: 0;
+}
+.revision-diff > div + div {
+  border-left: 1px solid var(--border);
+  background: var(--accent-soft);
+}
+.revision-diff pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.review-conflict {
+  padding: 12px;
+  border: 2px solid #b77906;
+  border-radius: 8px;
+}
+@media (max-width: 600px) {
+  .diagram-canvas {
+    height: 310px;
+  }
+  .revision-diff {
+    grid-template-columns: 1fr;
+  }
+  .revision-diff > div + div {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+}
+.diagram-edge.error path {
+  stroke: #c2414a;
+  stroke-dasharray: 3 3;
+}
+.diagram-arrow.error {
+  fill: #c2414a;
+}
+.diagram-legend .error {
+  border-color: #c2414a;
+  border-top-style: dotted;
+}
+:root[data-contrast="high"] .diagram-edge path {
+  stroke: var(--text);
+}
+:root[data-contrast="high"] .diagram-arrow {
+  fill: var(--text);
+}
+.diagram-step-summary {
+  margin: 12px 0;
+  padding: 10px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.diagram-edge .diagram-edge-badge {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+.diagram-edge.is-active .diagram-edge-badge {
+  stroke: var(--text);
+}
+.diagram-edge text {
+  stroke: none;
+  font-size: 11px;
+}
+.flow-security-note {
+  background: #fff1f2 !important;
+  color: #9f1239 !important;
+  border-color: #be123c !important;
+}
+.flow-security-note svg,
+.flow-security-note span {
+  color: inherit !important;
+}
+:root[data-theme="dark"] .flow-security-note {
+  background: #381a27 !important;
+  color: #fecdd3 !important;
+  border-color: #fb7185 !important;
+}

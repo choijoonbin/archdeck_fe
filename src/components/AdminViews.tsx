@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { ArchitectureDiagram, validateDiagram } from "./ArchitectureDiagram";
+import { CandidateReview } from "./CandidateReview";
 import { request } from "../services/apiClient";
 import { useLearning } from "../context/LearningContext";
 function useList(path: string) {
@@ -231,9 +233,15 @@ export function Studio() {
   try {
     parsed = JSON.parse(text);
   } catch {}
+  const graphErrors =
+    kind === "topics" && parsed ? validateDiagram(parsed) : [];
   const save = async () => {
-    if (!parsed) {
-      msg("JSON 형식을 확인해 주세요.");
+    if (!parsed || graphErrors.length) {
+      msg(
+        graphErrors.length
+          ? graphErrors.join(" ")
+          : "JSON 형식을 확인해 주세요.",
+      );
       return;
     }
     try {
@@ -300,6 +308,7 @@ export function Studio() {
         <label className="surface">
           JSON 편집
           <textarea
+            aria-label="JSON 편집"
             className="code-editor"
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -315,6 +324,25 @@ export function Studio() {
               <p className="preserve-lines">
                 {parsed.overview || parsed.fullDef || parsed.description}
               </p>
+              {kind === "topics" &&
+                (graphErrors.length ? (
+                  <div role="alert">
+                    {graphErrors.map((error) => (
+                      <p key={error}>{error}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <ArchitectureDiagram
+                    nodes={parsed.diagramNodes}
+                    edges={parsed.diagramEdges || []}
+                    activeStep={
+                      parsed.flowSteps[0] || {
+                        activeNodes: [],
+                        activeEdgeIds: [],
+                      }
+                    }
+                  />
+                ))}
               <details>
                 <summary>전체 구조 보기</summary>
                 <pre>{JSON.stringify(parsed, null, 2)}</pre>
@@ -368,15 +396,16 @@ export function Studio() {
   );
 }
 export function Research() {
+  const { topics, refresh: refreshContent } = useLearning();
   const policies = useList("/research/policies"),
     runs = useList("/research/runs"),
     candidates = useList("/research/candidates");
+  const [policyTarget, setPolicyTarget] = useState("");
+  const [policyEditorOpen, setPolicyEditorOpen] = useState(false);
   const [policy, setPolicy] = useState(""),
     [message, msg] = useState(""),
     [busy, setBusy] = useState(false),
     [config, setConfig] = useState("");
-  const [reviewReason, setReviewReason] = useState("");
-  const [publishConfirmed, setPublishConfirmed] = useState(false);
   useEffect(() => {
     const timer = setInterval(() => {
       runs.refresh();
@@ -433,11 +462,36 @@ export function Research() {
         >
           수동 실행
         </button>
+        <button
+          disabled={busy || !policy}
+          onClick={() => {
+            const selected = policies.items.find((item) => item.id === policy);
+            if (selected) {
+              const { version, ...value } = selected;
+              setConfig(JSON.stringify(value, null, 2));
+              setPolicyTarget(selected.targetContentId || "");
+              setPolicyEditorOpen(true);
+            }
+          }}
+        >
+          선택한 정책 편집
+        </button>
         <span className="muted">
           자동 게시 없음 · 서버 설정의 예산과 출처 규칙 적용
         </span>
       </div>
-      <details className="surface">
+      {policy && (
+        <p className="muted">
+          {policies.items.find((p) => p.id === policy)?.targetContentId
+            ? `기존 토픽 개정 · 대상 ${policies.items.find((p) => p.id === policy)?.targetContentId} · 기준 v${policies.items.find((p) => p.id === policy)?.targetBaseLockVersion}`
+            : "새 인사이트 수집 정책"}
+        </p>
+      )}
+      <details
+        className="surface"
+        open={policyEditorOpen}
+        onToggle={(e) => setPolicyEditorOpen(e.currentTarget.open)}
+      >
         <summary>분야·출처·규칙 편집</summary>
         <label>
           정책 JSON
@@ -450,11 +504,43 @@ export function Research() {
             }
           />
         </label>
+        <label>
+          수집 결과의 대상
+          <select
+            aria-label="수집 결과의 대상"
+            value={policyTarget}
+            onChange={(e) => setPolicyTarget(e.target.value)}
+          >
+            <option value="">신규 인사이트</option>
+            {topics.map((topic) => (
+              <option key={topic.id} value={topic.id}>
+                {topic.title} 개정 · v{topic.lockVersion ?? "?"}
+              </option>
+            ))}
+          </select>
+        </label>
+        {policyTarget && (
+          <p>
+            기존 토픽 개정 수집 · targetContentId: {policyTarget} · 기준 버전:{" "}
+            {topics.find((topic) => topic.id === policyTarget)?.lockVersion ??
+              "확인 필요"}
+            . 실행 시 서버가 토픽 원본을 고정하며 게시 전에 차이를 검토합니다.
+          </p>
+        )}
         <button
           disabled={busy}
           onClick={() => {
             try {
               const value = JSON.parse(config);
+              delete value.targetContentId;
+              delete value.targetBaseLockVersion;
+              if (policyTarget) {
+                const topic = topics.find((item) => item.id === policyTarget);
+                if (topic?.lockVersion === undefined)
+                  throw new Error("대상 버전 없음");
+                value.targetContentId = policyTarget;
+                value.targetBaseLockVersion = topic.lockVersion;
+              }
               act("/research/policies", value).then(policies.refresh);
             } catch {
               msg("정책 JSON을 확인해 주세요.");
@@ -488,92 +574,21 @@ export function Research() {
         </table>
       </div>
       <h2>지식 검토함</h2>
-      <label>
-        검토 사유
-        <input
-          value={reviewReason}
-          onChange={(e) => setReviewReason(e.target.value)}
-          placeholder="근거 확인 결과와 판단을 남기세요"
-        />
-      </label>
-      <label className="setting-toggle">
-        <span>출처와 주장을 검토했으며 게시를 승인합니다.</span>
-        <input
-          type="checkbox"
-          checked={publishConfirmed}
-          onChange={(e) => setPublishConfirmed(e.target.checked)}
-        />
-      </label>
       {!candidates.items.length && (
         <div className="empty-state">
           실행 후 생성된 후보가 이곳에 표시됩니다.
         </div>
       )}
       {candidates.items.map((c) => (
-        <article className="surface" key={c.id}>
-          <span className="eyebrow">
-            {c.status} · v{c.candidateVersion}
-          </span>
-          <h3>{c.title}</h3>
-          <p>{c.summary}</p>
-          {c.claims?.map((cl: any, i: number) => (
-            <div className="evidence" key={i}>
-              <strong>{cl.text}</strong>
-              {cl.evidence?.map((e: any, j: number) => (
-                <blockquote key={j}>
-                  {e.quote}
-                  <small>출처 ID: {e.source_id || e.sourceId}</small>
-                </blockquote>
-              ))}
-            </div>
-          ))}
-          <details>
-            <summary>수집 근거와 검증 결과</summary>
-            <pre>
-              {JSON.stringify(
-                { documents: c.documents, issues: c.issues },
-                null,
-                2,
-              )}
-            </pre>
-          </details>
-          {["awaiting_review", "needs_review", "pending"].includes(
-            c.status,
-          ) && (
-            <div className="toolbar">
-              <button
-                className="primary-button"
-                disabled={
-                  busy ||
-                  c.issues?.length > 0 ||
-                  !publishConfirmed ||
-                  !reviewReason.trim()
-                }
-                onClick={() => {
-                  if (publishConfirmed)
-                    act("/research/candidates/" + c.id + "/publish", {
-                      candidateVersion: c.candidateVersion,
-                      baseLockVersion: c.baseLockVersion,
-                      reason: reviewReason,
-                    });
-                }}
-              >
-                승인하고 게시
-              </button>
-              <button
-                disabled={busy}
-                onClick={() =>
-                  act("/research/candidates/" + c.id + "/review", {
-                    action: "reject",
-                    reason: reviewReason || "관리자 검토 후 반려",
-                  })
-                }
-              >
-                반려
-              </button>
-            </div>
-          )}
-        </article>
+        <CandidateReview
+          key={c.id}
+          candidate={c}
+          topics={topics}
+          refresh={async () => {
+            await candidates.refresh();
+            await refreshContent();
+          }}
+        />
       ))}
     </section>
   );
